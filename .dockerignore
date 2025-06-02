@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Python virtual environment
+.venv
+venv
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE and OS specific
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile # Sometimes useful if you have multiple Dockerfiles or build stages
+
+# Local instance data (if any)
+instance/
+*.sqlite3
+*.db
+
+# Infrastructure code (not needed in the application image)
+infrastructure/
