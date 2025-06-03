@@ -1,0 +1,137 @@
+# .github/workflows/main.yml
+
+name: Deploy Stockland Analytical App CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Configure AWS Credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_OIDC_ROLE_NAME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install dependencies and deploy CDK app
+        run: |
+          pip install -r application/requirements.txt
+          pip install -r infrastructure/requirements.txt
+          npm install -g aws-cdk
+          cd infrastructure
+          cdk synth
+          cdk deploy --all --require-approval never -c is_demo=true
+
+
+
+# # .github/workflows/main.yml
+
+# name: Deploy Stockland Analytical App CI/CD
+
+# # Controls when the workflow will run
+# on:
+#   push:
+#     branches:
+#       - main # Or your primary branch, e.g., master
+#   # Optionally, trigger on pull requests to main for validation (cdk synth)
+#   # pull_request:
+#   #   branches:
+#   #     - main
+
+# permissions:
+#   id-token: write # Required for OIDC AWS authentication
+#   contents: read  # Required to checkout the repository
+
+# jobs:
+#   deploy:
+#     name: Deploy to AWS
+#     runs-on: ubuntu-latest
+#     environment: production # Optional: if you set up environments in GitHub
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20' # Or another CDK-compatible LTS version like 18 or 22
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.10' # Or your preferred Python version (e.g., 3.9, 3.11, 3.12)
+
+#       - name: Configure AWS Credentials using OIDC
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_OIDC_ROLE_NAME }} # e.g., GitHubAction-CDKDeployRole
+#           aws-region: ${{ secrets.AWS_REGION }} # e.g., us-east-1
+#           # role-session-name: GitHubActionSession-${{ github.run_id }} # Optional
+
+#       - name: Install Python dependencies for CDK and Application
+#         run: |
+#           python -m venv .venv
+#           source .venv/bin/activate
+#           pip install -r application/requirements.txt
+#           pip install -r infrastructure/requirements.txt
+#           # Install AWS CDK Toolkit globally if not part of your dev dependencies
+#           # (Often CDK is installed globally on dev machines, but CI needs it explicitly)
+#           npm install -g aws-cdk
+
+#       - name: CDK Bootstrap (if not already done or for different regions/accounts)
+#         # This step might be skippable if your target account/region is already bootstrapped
+#         # and the CI/CD role has permissions to use the CDKToolkit stack.
+#         # However, running it ensures the environment is ready.
+#         # Ensure the OIDC role has permissions to perform bootstrap if this is run.
+#         # For simplicity in a single-account/region setup, you might bootstrap manually once.
+#         # If you keep this, ensure the role secrets.AWS_OIDC_ROLE_NAME has 'iam:PassRole' for the CDK execution roles.
+#         # It also needs permissions to create the CDKToolkit stack resources (S3, ECR, IAM roles).
+#         # For now, let's assume bootstrapping is done manually or the role is very permissive.
+#         # If you want to bootstrap here, uncomment and ensure permissions:
+#         # run: |
+#         #   source .venv/bin/activate
+#         #   cd infrastructure
+#         #   cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}
+#         # working-directory: ./infrastructure # Ensure this is set if you cd into infrastructure
+
+#       - name: CDK Synthesize
+#         run: |
+#           source .venv/bin/activate
+#           cd infrastructure
+#           cdk synth
+#         # working-directory: ./infrastructure # Alternative way to specify directory
+
+#       - name: CDK Deploy
+#         run: |
+#           source .venv/bin/activate
+#           cd infrastructure
+#           # The -c is_demo=true context variable is used if your RDS setup needs it for backups.
+#           # Adjust or remove if not applicable to your production deployment.
+#           cdk deploy --all --require-approval never -c is_demo=true 
+#         # working-directory: ./infrastructure # Alternative way to specify directory
+
