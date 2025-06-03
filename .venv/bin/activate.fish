@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /mnt/c/Projects/project-15-python-cdk/.venv
+set -gx VIRTUAL_ENV /mnt/c/terraform/Devops1/project20-aws-cdk/serverless-analytical-app/.venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
