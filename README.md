@@ -33,45 +33,6 @@ The Flask backend is containerized with Docker and deployed as a **Fargate servi
 
 ### **Diagram (Mermaid Syntax)**
 
-```mermaid
-graph TD
-    subgraph "User"
-        U[User/Client Browser]
-    end
-
-    subgraph "AWS Cloud"
-        subgraph "VPC"
-            ALB[Application Load Balancer]
-            subgraph "ECS Cluster (MyCluster)"
-                FS[Fargate Service: MyFargateService]
-                subgraph "Fargate Task 1"
-                    C1[Container: stockland-app<br>(Flask + Gunicorn)]
-                end
-                subgraph "Fargate Task N (if scaled)"
-                    CN[Container: stockland-app<br>(Flask + Gunicorn)]
-                end
-            end
-            ECR[ECR Repository<br>(stores stockland-app image)]
-        end
-    end
-
-    U -->|HTTPS Request| ALB
-    ALB -->|HTTP Traffic (Port 8000)| FS
-    FS --> C1
-    FS --> CN
-    C1 -->|Pulls image| ECR
-    CN -->|Pulls image| ECR
-
-    style U fill:#D5F5E3,stroke:#2ECC71
-    style ALB fill:#AED6F1,stroke:#3498DB
-    style FS fill:#FAD7A0,stroke:#F39C12
-    style C1 fill:#F5B7B1,stroke:#E74C3C
-    style CN fill:#F5B7B1,stroke:#E74C3C
-    style ECR fill:#D2B4DE,stroke:#8E44AD
-```
-
-> _Use a Markdown previewer like VS Code with Mermaid support for this diagram._
-
 ---
 
 ## **Project Structure**
@@ -242,3 +203,46 @@ cdk destroy
 ### **Phase 6: Implement CI/CD Pipeline**
 
 - Automate test, build, and deploy with GitHub Actions.
+### ⚙️ CI/CD Pipeline (GitHub Actions)
+🔁 Trigger
+Automatically runs on push to main branch.
+
+### 🔐 Authentication
+- Uses OIDC to assume IAM role.
+- No AWS secrets stored in GitHub.
+
+## 📋 Steps
+Checkout repository
+Setup Node.js and Python
+Authenticate to AWS via OIDC
+Install dependencies
+Build and deploy using cdk synth + cdk deploy
+
+### 🛡️ Setup for CI/CD
+1. Create OIDC Provider in AWS IAM
+URL: https://token.actions.githubusercontent.com
+
+Audience: sts.amazonaws.com
+
+2. Create IAM Role for GitHub Actions
+Trusts the OIDC provider
+
+# Permissions:
+
+- sts:AssumeRole
+- iam:PassRole
+- Admin or least-privileged access for CDK resources
+
+### 3. GitHub Repository Secrets
+# Add the following secrets:
+
+- AWS_ACCOUNT_ID
+- AWS_REGION
+- AWS_OIDC_ROLE_NAME
+
+# 🔑 Key Files
+- `.github/workflows/main.yml` — GitHub Actions pipeline
+- `Dockerfile` — Flask Docker build
+- `application/app.py` — Flask backend logic
+- `infrastructure/infrastructure_stack.py` — CDK stack logic
+
