@@ -15,7 +15,7 @@ jobs:
   deploy:
     name: Deploy to AWS
     runs-on: ubuntu-latest
-    environment: production
+    #environment: production
 
     steps:
       - name: Checkout repository
