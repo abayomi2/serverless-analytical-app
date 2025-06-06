@@ -39,19 +39,23 @@ The Flask backend is containerized with Docker and deployed as a **Fargate servi
 
 ```
 serverless-analytical-app/
-├── .venv/                    # Python virtual environment
-├── application/              # Flask app code
-│   ├── app.py                # Main Flask logic
-│   └── requirements.txt      # Flask dependencies
+├── .github/
+│   └── workflows/
+│       └── main.yml          # CI/CD deployment workflow
+├── application/              # Source for the Analytical App
+│   ├── app.py
+│   └── requirements.txt
+├── reporting_app/            # Source for the Reporting App
+│   ├── app.py
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── infrastructure/           # AWS CDK IaC code
-│   ├── app.py                # CDK entry point
-│   ├── cdk.json              # CDK configuration
-│   ├── infrastructure_stack.py # CDK stack definition
-│   └── requirements.txt      # CDK Python dependencies
-├── .dockerignore             # Docker ignore file
-├── .gitignore                # Git ignore file
-├── Dockerfile                # Builds Flask Docker image
+│   ├── app.py
+│   ├── infrastructure_stack.py # Defines all cloud resources
+│   └── requirements.txt
+├── Dockerfile                # Dockerfile for the Analytical App
 └── README.md                 # This file
+
 ```
 
 ---
@@ -246,3 +250,59 @@ Trusts the OIDC provider
 - `application/app.py` — Flask backend logic
 - `infrastructure/infrastructure_stack.py` — CDK stack logic
 
+### Serverless Multi-Service Web App with AWS CDK
+- * Overview
+This project demonstrates a multi-service architecture on AWS, featuring two independent Python Flask applications deployed as containers on AWS Fargate. The entire infrastructure is defined using the AWS Cloud Development Kit (CDK) for Infrastructure as Code (IaC).
+
+The architecture includes:
+
+An Analytical App providing core API functionalities.
+
+A Reporting App that provides summary data.
+
+Both services are served by a single, shared Application Load Balancer (ALB) using path-based routing. They connect to a shared AWS RDS PostgreSQL database with credentials securely managed by AWS Secrets Manager. The entire deployment process is automated via a CI/CD pipeline using GitHub Actions.
+
+This project showcases expertise in designing and managing scalable microservice-style architectures, advanced cloud networking, IaC, CI/CD automation, and secure data management.
+
+Features Implemented
+Infrastructure as Code (IaC): AWS CDK (Python) defines all AWS resources.
+
+Containerization: Two separate Python Flask apps, each containerized with Docker.
+
+AWS Fargate: Serverless compute hosting both microservices.
+
+Shared Application Load Balancer (ALB): Uses path-based routing (/api/*, /reporting/*, etc.) to direct traffic to the correct backend service from a single endpoint.
+
+Amazon RDS for PostgreSQL: A single managed database instance shared securely by both services.
+
+AWS Secrets Manager: Securely stores and manages the shared database credentials.
+
+Amazon VPC: A custom VPC for secure networking of all resources.
+
+AWS IAM & OIDC: Granular IAM roles per service and secure, keyless OIDC authentication for the CI/CD pipeline.
+
+Continuous Integration/Continuous Deployment (CI/CD): An automated GitHub Actions pipeline deploys all infrastructure and application updates.
+
+### Architecture
+This multi-service architecture uses a shared Application Load Balancer to act as a single ingress point. The listener on the ALB inspects the URL path of incoming requests and forwards them to the appropriate backend Fargate service based on a set of priority-based rules. For example, requests to /api/* are routed to the Analytical App, while requests to /reporting/* are routed to the Reporting App. This is a cost-effective and common pattern for microservices. Both services run in private subnets and connect securely to the shared RDS instance, fetching credentials from Secrets Manager at runtime.
+
+### Setup and Deployment
+Setup and deployment steps remain similar, but the outcome is now two services running behind one load balancer. The CI/CD pipeline handles the deployment of both applications and the shared infrastructure.
+
+Why use ["/reporting", "/reporting/*"] in the ALB Listener Rule?
+When configuring path-based routing, it's important to be explicit.
+
+The "/reporting/*" pattern matches any request that has something after /reporting/, like /reporting/property-summary.
+
+However, it does not match a request to the base path /reporting itself.
+
+By providing a list of patterns, ["/reporting", "/reporting/*"], we configure the ALB listener rule to match both the exact path and any sub-paths, ensuring all requests intended for the reporting service are routed correctly. This was a key fix to ensure the service's base URL was accessible.
+
+Future Enhancements
+Advanced CI/CD: Implement PR validation workflows with linting, unit tests, and security scanning.
+
+Observability: Create service-specific CloudWatch Dashboards and alarms.
+
+Security Hardening: Refine IAM permissions to strict least privilege and integrate AWS WAF.
+
+Database Migrations: Integrate a tool like Alembic to manage schema changes in an automated fashion, which becomes critical in a multi-service, shared-database environment.
