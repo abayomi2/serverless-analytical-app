@@ -184,7 +184,7 @@ class InfrastructureStack(Stack):
             targets=[reporting_app_service],
             priority=2,
             conditions=[
-                elbv2.ListenerCondition.path_patterns(["/reporting/*"])
+                elbv2.ListenerCondition.path_patterns(["/reporting", "/reporting/*"])
             ],
             health_check=elbv2.HealthCheck(
                 path="/reporting",  # Use a valid path for the health check
