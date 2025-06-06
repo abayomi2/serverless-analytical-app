@@ -251,52 +251,130 @@ Trusts the OIDC provider
 - `infrastructure/infrastructure_stack.py` — CDK stack logic
 
 ### Serverless Multi-Service Web App with AWS CDK
-- * Overview
-This project demonstrates a multi-service architecture on AWS, featuring two independent Python Flask applications deployed as containers on AWS Fargate. The entire infrastructure is defined using the AWS Cloud Development Kit (CDK) for Infrastructure as Code (IaC).
+Project Story: In-Depth — Building and Deploying a Cloud-Native Multi-Service Application
+Interviewer: "Can you tell me about a project you're proud of, perhaps one that highlights your DevOps skills and problem-solving abilities?"
 
-The architecture includes:
+Certainly. I recently evolved a personal project to demonstrate a more complex, real-world architecture. I started by building a Serverless Analytical Web App and then extended it into a multi-service system. The project now features two independent applications sharing core infrastructure, all defined with Infrastructure as Code and deployed via a fully automated CI/CD pipeline. It was an excellent exercise in managing a more complex cloud environment.
 
-An Analytical App providing core API functionalities.
+The Vision: From Monolith to Microservices
+My initial vision was a single, automated application deployment. This quickly evolved into a more challenging goal:
 
-A Reporting App that provides summary data.
+How could I add a second, distinct application that shared some resources (like the database) without creating a tightly coupled system?
 
-Both services are served by a single, shared Application Load Balancer (ALB) using path-based routing. They connect to a shared AWS RDS PostgreSQL database with credentials securely managed by AWS Secrets Manager. The entire deployment process is automated via a CI/CD pipeline using GitHub Actions.
+This led me to refactor the architecture to support a multi-service pattern using a shared Application Load Balancer (ALB).
 
-This project showcases expertise in designing and managing scalable microservice-style architectures, advanced cloud networking, IaC, CI/CD automation, and secure data management.
+The Journey & Key Decisions (Phase by Phase)
+Phase 1–4: Building the Foundation (The First Application)
+Built the foundational Analytical App — a Python Flask API containerized with Docker.
 
-Features Implemented
-Infrastructure as Code (IaC): AWS CDK (Python) defines all AWS resources.
+Used AWS CDK (Python) to define infrastructure:
 
-Containerization: Two separate Python Flask apps, each containerized with Docker.
+Custom VPC
 
-AWS Fargate: Serverless compute hosting both microservices.
+ECS Fargate service
 
-Shared Application Load Balancer (ALB): Uses path-based routing (/api/*, /reporting/*, etc.) to direct traffic to the correct backend service from a single endpoint.
+Application Load Balancer
 
-Amazon RDS for PostgreSQL: A single managed database instance shared securely by both services.
+RDS PostgreSQL database
 
-AWS Secrets Manager: Securely stores and manages the shared database credentials.
+AWS Secrets Manager for secure credential handling
 
-Amazon VPC: A custom VPC for secure networking of all resources.
+Key Challenges:
+Dependency Management: Separating application and CDK dependencies cleanly.
 
-AWS IAM & OIDC: Granular IAM roles per service and secure, keyless OIDC authentication for the CI/CD pipeline.
+Docker Build Issues: Fixed exec format error by setting Docker build platform to linux/amd64.
 
-Continuous Integration/Continuous Deployment (CI/CD): An automated GitHub Actions pipeline deploys all infrastructure and application updates.
+CloudFormation Stability: Debugged deployment issues like local clock skew and stack rollback errors.
 
-### Architecture
-This multi-service architecture uses a shared Application Load Balancer to act as a single ingress point. The listener on the ALB inspects the URL path of incoming requests and forwards them to the appropriate backend Fargate service based on a set of priority-based rules. For example, requests to /api/* are routed to the Analytical App, while requests to /reporting/* are routed to the Reporting App. This is a cost-effective and common pattern for microservices. Both services run in private subnets and connect securely to the shared RDS instance, fetching credentials from Secrets Manager at runtime.
+Phase 5: Evolving to a Multi-Service Architecture
+Goal: Deploy a second, independent Reporting App sharing the same VPC, RDS, and ALB.
 
-### Setup and Deployment
-Setup and deployment steps remain similar, but the outcome is now two services running behind one load balancer. The CI/CD pipeline handles the deployment of both applications and the shared infrastructure.
+Steps & Decisions:
+New App Directory: Created reporting_app/ with:
 
-Why use ["/reporting", "/reporting/*"] in the ALB Listener Rule?
-When configuring path-based routing, it's important to be explicit.
+Separate Flask app
 
-The "/reporting/*" pattern matches any request that has something after /reporting/, like /reporting/property-summary.
+Independent requirements.txt and Dockerfile
 
-However, it does not match a request to the base path /reporting itself.
+Refactoring the CDK Stack:
 
-By providing a list of patterns, ["/reporting", "/reporting/*"], we configure the ALB listener rule to match both the exact path and any sub-paths, ensuring all requests intended for the reporting service are routed correctly. This was a key fix to ensure the service's base URL was accessible.
+Replaced ecs_patterns.ApplicationLoadBalancedFargateService with manual constructs:
+
+Defined shared elbv2.ApplicationLoadBalancer
+
+Added single listener on port 80 with a default_action returning 404 Not Found
+
+Created two ecs.FargateService constructs — one for each app
+
+Path-Based Routing:
+Analytical App (Priority 1):
+conditions=[elbv2.ListenerCondition.path_patterns(["/api/*", "/"])]
+
+Reporting App (Priority 2):
+conditions=[elbv2.ListenerCondition.path_patterns(["/reporting", "/reporting/*"])]
+
+Shared Resource Access:
+
+Both Fargate services used same Secrets Manager secret
+
+Security groups allowed DB connectivity from both services
+
+Challenges Faced:
+CDK TypeError:
+Caused by incorrect argument usage. Resolved by properly using elbv2.ListenerCondition.path_patterns().
+
+Listener Validation Error:
+Fixed by defining a default_action on the listener.
+
+Health Check Failures:
+Resolved by setting health_check.path = "/reporting" for the Reporting App.
+
+404 on Base Path:
+/reporting/* missed /reporting. Fixed by updating rule to ["/reporting", "/reporting/*"].
+
+Phase 6: CI/CD Pipeline Implementation
+Goal: Automate deployment with GitHub Actions
+
+Implementation:
+Used OIDC for secure, keyless GitHub-to-AWS authentication
+
+On push to main:
+
+Pipeline synthesizes CDK code
+
+Builds two Docker images
+
+Deploys all infrastructure and services
+
+Challenges:
+IAM/OIDC Setup:
+Required correct trust relationships and IAM role permissions for GitHub Actions to manage AWS resources.
+
+The Final Outcome
+Two independent applications deployed as Fargate services
+
+Shared ALB and RDS instance
+
+Infrastructure-as-Code with AWS CDK
+
+Automated CI/CD pipeline via GitHub Actions
+
+Result: A robust, scalable, cost-effective multi-service architecture aligned with modern microservices best practices.
+
+Learnings & Connection to the Role
+This project showcased my ability to:
+
+Design & Implement Complex Cloud Infrastructure:
+Evolved from monolithic to microservices with shared architecture.
+
+Troubleshoot Systematically:
+Solved issues in networking (ALB), infrastructure (CDK), and app config (health checks).
+
+Apply Best Practices:
+Used default ALB actions, specific health checks, and secure resource sharing.
+
+Automate Everything:
+Enabled reliable, hands-off deployments with a fully automated pipeline.
 
 Future Enhancements
 Advanced CI/CD: Implement PR validation workflows with linting, unit tests, and security scanning.
@@ -306,3 +384,7 @@ Observability: Create service-specific CloudWatch Dashboards and alarms.
 Security Hardening: Refine IAM permissions to strict least privilege and integrate AWS WAF.
 
 Database Migrations: Integrate a tool like Alembic to manage schema changes in an automated fashion, which becomes critical in a multi-service, shared-database environment.
+
+Could not assume role with OIDC: Not authorized to perform sts:AssumeRoleWithWebIdentity
+
+![Flowchart](images/flowchart.png.png)
